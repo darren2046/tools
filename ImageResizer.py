@@ -7,7 +7,7 @@ if __name__ == "__main__":
         if fname.startswith("Resized_"):
             continue 
 
-        if len(Re.FindAll("IMG_[0-9]+.JPG", fname)) == 0:
+        if len(Re.FindAll("img_[0-9]+.jpg", fname.lower())) == 0:
             continue 
 
         src = Os.Path.Join(dirpath, fname)
