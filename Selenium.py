@@ -42,7 +42,7 @@ if __name__ == "__main__":
     se.Get("https://find-and-update.company-information.service.gov.uk/")
     # Find the input bar and input "ade"
     inputBar = se.Find("/html/body/div[1]/main/div[3]/div/form/div/div/input").Input("ade")
-  	# Find the search button and click
+    # Find the search button and click
     button = se.Find('//*[@id="search-submit"]').Click()
     
     # Get the page source of the search result
