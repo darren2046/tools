@@ -5,7 +5,7 @@ if __name__ == "__main__":
     # se = Selenium()
 
     # Remote 
-    #se = Selenium("http://127.0.0.1:4444")
+    # se = Selenium("http://127.0.0.1:4444")
 
     # With PAC 
     se = Tools.Selenium(PACFileURL="http://192.168.1.135:8000/pac")
