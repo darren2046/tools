@@ -1,0 +1,24 @@
+version: '3'
+services:
+  openvpn:
+    image: darren2046/openvpn:arm64
+    networks:
+      openvpn_vpc:
+        ipv4_address: 192.168.168.53
+    container_name: openvpn-192.168.168.53
+    restart: always
+    command: > 
+      bash -c "
+        iptables -t nat -A POSTROUTING -j MASQUERADE
+        openvpn --cd /etc/openvpn --config /etc/openvpn/server.conf
+      "
+    privileged: true
+    ports:
+      - "10.211.55.2:1194:1194/udp"
+    volumes:
+      - ./server.conf:/etc/openvpn/server.conf
+    
+networks:
+  openvpn_vpc:
+    external: true
+    name: pause_network
