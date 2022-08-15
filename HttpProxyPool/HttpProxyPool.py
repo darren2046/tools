@@ -6,6 +6,8 @@ if len(Os.Args) < 2:
 
 psurl = Os.Args[1]
 
+Lg.Trace(f"代理池的服务器URL:{psurl}")
+
 w = Tools.WebServer()
 
 proxypool = []
