@@ -1,5 +1,3 @@
-from tabnanny import check
-from weakref import proxy
 from bagbag import *
 
 if len(Os.Args) < 2:
