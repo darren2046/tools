@@ -1,10 +1,12 @@
 from bagbag import *
 
 if len(Os.Args) < 2:
-    print("Usage: " + Os.Args[0] + " [URL to get proxy servers]")
+    print("Usage: " + Os.Args[0] + " [URL to get proxy servers] [Pool Size]")
     Os.Exit(0)
 
 psurl = Os.Args[1]
+psize = int(Os.Args[2])
+
 serving = Time.Now()
 
 Lg.Trace(f"代理池的服务器URL:{psurl}")
@@ -46,7 +48,7 @@ def updateProxy():
             Lg.Trace(f"Server not exists")
             if checkAlive(u):
                 Lg.Trace(f"Server alive")
-                if len(proxypool) > 100:
+                if len(proxypool) > psize:
                     uu = proxypool.pop(0)
                     Lg.Trace(f"Pop server: {uu}")
                 proxypool.append(u)
@@ -66,11 +68,14 @@ def updateProxy():
             if Time.Now() - serving > 60 and 3600 > Time.Now() - serving:
                 Time.Sleep(1)
                 continue
-
-        for u in [i.strip() for i in Http.Get(psurl).Content.splitlines()]:
-            Lg.Trace(f"Checking: {u}")
-            Thread(checkAndAppend, u)
-            Time.Sleep(1)
+        
+        try:
+            for u in [i.strip() for i in Http.Get(psurl).Content.splitlines()]:
+                Lg.Trace(f"Checking: {u}")
+                Thread(checkAndAppend, u)
+                Time.Sleep(1)
+        except:
+            pass
             
 Thread(updateProxy)
 
