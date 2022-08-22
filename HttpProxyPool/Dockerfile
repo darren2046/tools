@@ -1,4 +1,4 @@
-FROM darren2046/bagbag:0.30.8
+FROM darren2046/bagbag:0.31.10
 
 WORKDIR /app
 
@@ -16,6 +16,6 @@ RUN pip install types-requests requests; \
 COPY HttpProxyPool.py /app/HttpProxyPool.py
 COPY run.py /app/run.py
 
-EXPOSE 8899
+EXPOSE 8899 9105
 
 ENTRYPOINT [ "python", "/app/run.py" ]
