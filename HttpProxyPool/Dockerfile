@@ -1,4 +1,4 @@
-FROM darren2046/bagbag:0.31.10
+FROM darren2046/bagbag:0.31.14
 
 WORKDIR /app
 

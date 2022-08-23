@@ -9,32 +9,85 @@ class ProxyPool():
                 AddColumn("url", "string"). # 代理的地址 
                 AddColumn("use", "int"). # 使用过的次数
                 AddColumn("status", "string"). # 状态, alive, pop, dead
+                AddColumn("time", "int"). # 添加的时间
                 AddIndex("use"). 
                 AddIndex("status"). 
-                AddIndex('md5')
+                AddIndex('md5'). 
+                AddIndex("time"). 
+                AddIndex("use", "time")
         )
-        self.pptb = self.db.Table("proxypool")
+    #     self.pptb = self.db.Table("proxypool")
+    #     self.lock = Tools.Lock()
+
+    # def wrap(func): # func是被包装的函数
+    #     def ware(self, *args, **kwargs): # self是类的实例
+    #         self.lock.Acquire()
+    #         res = func(self, *args, **kwargs)
+    #         self.lock.Release()
+    #         return res
+
+    #     return ware
+    
+    def Get(self) -> str | None:
+        pptb = self.db.Table("proxypool")
+        r = pptb.Where("use", "!=", -1).OrderBy("use").OrderBy("time", "desc").First()
+        if not r:
+            return None
+        
+        pptb.Where("id", "=", r['id']).Data({
+            "use": r['use'] + 1,
+        }).Update()
+
+        return r['url']
     
     def Has(self, url:str) -> bool:
-        return self.pptb.Where("url", "=", url).Exists()
+        pptb = self.db.Table("proxypool")
+        return pptb.Where("md5", "=", Hash.Md5sum(url)).Exists()
     
     def Size(self) -> int:
-        return self.pptb.Where("status", "=", "alive").Count()
+        pptb = self.db.Table("proxypool")
+        return pptb.Where("status", "=", "alive").Count()
     
     def Append(self, url:str):
-        self.pptb.Data({
+        pptb = self.db.Table("proxypool")
+        pptb.Data({
             "url": url,
             "use": 0,
             "status": "alive",
+            "md5": Hash.Md5sum(url),
+            "time": int(Time.Now()),
         }).Insert()
     
     def Pop(self) -> str:
-        p = self.pptb.OrderBy("id").First()
-        self.pptb.Where("id", "=", p['id']).Delete()
+        pptb = self.db.Table("proxypool")
+        p = pptb.OrderBy("id").First()
+        pptb.Where("id", "=", p['id']).Data({
+            "status": "pop",
+            "use": -1,
+        }).Update()
         return p['url']
     
     def Remove(self, url:str):
-        self.pptb.Where("url", "=", url).Delete()
+        pptb = self.db.Table("proxypool")
+        pptb.Where("md5", "=", Hash.Md5sum(url)).Data({
+            "status": "remove",
+            "use": -1,
+        }).Update()
+    
+    def __iter__(self) -> str:
+        pptb = self.db.Table("proxypool")
+        sid = 0
+
+        while True:
+            res = pptb.Where("id", ">", sid).Limit(100).Get()
+            if len(res) == 0:
+                return 
+            
+            for r in res:
+                if r['id'] > sid:
+                    sid = r['id']
+
+                yield r['url'] 
 
 if __name__ == "__main__":
     if len(Os.Args) < 2:
@@ -54,8 +107,17 @@ if __name__ == "__main__":
     pgppc = pg.NewGauge("proxy_pool_count", "代理池的代理个数")
     pgppnd = pg.NewCounter("proxy_pool_new_dead", "从上游获取到的代理测试为无效的个数")
     pgpped = pg.NewCounter("proxy_pool_exists_dead", "代理池内的代理测试为无效的个数")
+    pgppu = pg.NewGaugeWithLabel("proxy_pool_usage", ["use"], "代理池里面的代理的使用情况")
 
     proxypool = ProxyPool()
+
+    def updateMetrics():
+        while True:
+            for i in Range(10):
+                pgppu.Set({'use': i}, proxypool.db.Table("proxypool").Where("use", "=", i).Count())
+            Time.Sleep(15)
+    
+    Thread(updateMetrics)
 
     # 循环更新代理池
     def updateProxy():
@@ -81,11 +143,11 @@ if __name__ == "__main__":
                         return False 
         
         def checkAndAppend(u:str):
-            if proxypool.Has(u):
+            if not proxypool.Has(u):
                 Lg.Trace(f"Server not exists")
                 if checkAlive(u):
                     Lg.Trace(f"Server alive")
-                    if len(proxypool) > psize:
+                    while proxypool.Size() > psize:
                         uu = proxypool.Pop()
                         Lg.Trace(f"Pop server: {uu}")
                     proxypool.Append(u)
@@ -100,9 +162,9 @@ if __name__ == "__main__":
                 pgppe.Add()
                 if not checkAlive(u):
                     Lg.Trace("Server not alive, remove")
-                    if u in proxypool:
+                    if proxypool.Has(u):
                         proxypool.Remove(u)
-                        pgppc.Set(len(proxypool))
+                        pgppc.Set(proxypool.Size())
                         pgppnd.Add()
         
         def removeUnAliveProxy():
@@ -112,9 +174,9 @@ if __name__ == "__main__":
                 for u in proxypool:
                     if not checkAlive(u):
                         Lg.Trace(f"The server inside the pool is not alive, remove: {u}")
-                        if u in proxypool:
+                        if proxypool.Has(u):
                             proxypool.Remove(u)
-                            pgppc.Set(len(proxypool))
+                            pgppc.Set(proxypool.Size())
                             pgpped.Add()
                 etime = Time.Now()
                 if etime - stime < gap:
@@ -123,7 +185,7 @@ if __name__ == "__main__":
         Thread(removeUnAliveProxy)
 
         while True:
-            if len(proxypool) > 10:
+            if proxypool.Size() > 10:
                 sec = Time.Now() - serving
                 Lg.Trace(f"如果代理池有10个以上链接, 且1分钟没有提供给其他人调用, 那么1小时更新一次, Time.Now() - serving: {sec}")
                 if Time.Now() - serving > 60 and 3600 > Time.Now() - serving:
@@ -147,6 +209,11 @@ if __name__ == "__main__":
     def index():
         global serving
         serving = Time.Now()
-        return Random.Choice(proxypool)
+        while True:
+            url = proxypool.Get()
+            if not url:
+                Time.Sleep(1)
+            else:
+                return url
 
     w.Run("0.0.0.0", 8879)
