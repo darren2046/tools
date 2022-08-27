@@ -13,4 +13,4 @@ def runProxy():
 
 Thread(runProxy)
 
-Os.System("python /app/HttpProxyPool.py '" + Os.Getenv("POOL_SERVER") + "' " + Os.Getenv("POOL_SIZE"))
+Os.System("python /app/HttpProxyPool.py '" + Os.Getenv("POOL_SERVER") + "' " + Os.Getenv("POOL_SIZE") + " " + Os.Getenv("CHECK_ALIVE"))
