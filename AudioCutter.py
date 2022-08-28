@@ -8,8 +8,11 @@ args = (
         Get()
 )
 
+if not Os.Path.Exists(args.dst):
+    Os.Mkdir(args.dst)
+
 for i in filter(lambda x: x != "", [i.strip() for i in open(args.txt)]):
-    name, start, end = i.split("|")
+    name, start, end = i.split("|")[0:3]
     if start == "" or end == "":
         continue 
 
