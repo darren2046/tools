@@ -23,7 +23,11 @@ for i in filter(lambda x: x != "", [i.strip() for i in open(args.txt)]):
         Lg.Error("持续时间不能小于0", exc=False)
         continue
 
-    cmd = f"ffmpeg -ss {start} -t {duration} -i '{args.src}' -acodec copy '{args.dst}/{name}.mp3'"
-
+    cmd = f"ffmpeg -ss {start} -t {duration} -i '{args.src}' -acodec copy '{args.dst}/1.mp3'"
     Lg.Trace(cmd)
     Os.System(cmd)
+
+    cmd = f"ffmpeg -i '{args.dst}/1.mp3' -map 0:a -c:a copy -map_metadata -1 '{args.dst}/{name}.mp3'"
+    Lg.Trace(cmd)
+    Os.System(cmd)
+

@@ -2,7 +2,7 @@ from pydub import AudioSegment, silence
 import time
 from bagbag import *
 
-args = Tools.Argparser().Add("file", "mp3 file")
+args = Tools.Argparser().Add("file", "mp3 file").Get()
 
 def gt(t):
     return time.strftime("%H:%M:%S", time.gmtime(t))
