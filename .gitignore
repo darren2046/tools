@@ -1,3 +1,8 @@
 .DS_Store
 tmp
-seek.db
+*.db
+cfg.py
+*.txt
+.gitignore
+*.pyc
+*.json
